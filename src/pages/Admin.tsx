@@ -6,9 +6,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { SkillBadge } from "@/components/SkillBadge";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ShieldCheck, Users, Activity, Target, ShieldAlert, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, ShieldCheck, Users, Activity, Target } from "lucide-react";
 import { SkillLevel, levelOrder } from "@/lib/skill";
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie } from "recharts";
+import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from "recharts";
 
 interface CertRow {
   user_id: string;
@@ -29,52 +29,27 @@ interface AttemptRow {
   profiles?: { display_name: string | null } | null;
 }
 
-interface ViolationRow {
-  id: string;
-  user_id: string;
-  quiz_id: string;
-  violation_type: string;
-  created_at: string;
-  profiles?: { display_name: string | null } | null;
-  quizzes?: { title: string } | null;
-}
-
 export default function Admin() {
   const { t } = useTranslation();
   const { isAdmin, loading: authLoading } = useAuth();
   const [certs, setCerts] = useState<CertRow[]>([]);
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
-  const [violations, setViolations] = useState<ViolationRow[]>([]);
-  const [quizMap, setQuizMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isAdmin) return;
     (async () => {
-      const [{ data: c }, { data: a }, { data: v }, { data: qz }] = await Promise.all([
+      const [{ data: c }, { data: a }] = await Promise.all([
         supabase.from("certifications").select("user_id, category, level, best_score, awarded_at"),
         supabase
           .from("quiz_attempts")
           .select("id, user_id, score, completed_at, weak_areas, quizzes(title, category)")
           .order("completed_at", { ascending: false })
           .limit(200),
-        supabase
-          .from("assessment_violations")
-          .select("id, user_id, quiz_id, violation_type, created_at")
-          .order("created_at", { ascending: false })
-          .limit(100),
-        supabase.from("quizzes").select("id, title"),
       ]);
 
-      const qm = new Map((qz ?? []).map((q: any) => [q.id, q.title]));
-      setQuizMap(qm);
-
       // Resolve profile names
-      const userIds = Array.from(new Set([
-        ...(c ?? []).map((r: any) => r.user_id),
-        ...(a ?? []).map((r: any) => r.user_id),
-        ...(v ?? []).map((r: any) => r.user_id),
-      ]));
+      const userIds = Array.from(new Set([...(c ?? []).map((r: any) => r.user_id), ...(a ?? []).map((r: any) => r.user_id)]));
       let profileMap = new Map<string, string | null>();
       if (userIds.length) {
         const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
@@ -83,11 +58,6 @@ export default function Admin() {
 
       setCerts((c ?? []).map((r: any) => ({ ...r, profiles: { display_name: profileMap.get(r.user_id) ?? null } })));
       setAttempts((a ?? []).map((r: any) => ({ ...r, profiles: { display_name: profileMap.get(r.user_id) ?? null } })));
-      setViolations((v ?? []).map((r: any) => ({
-        ...r,
-        profiles: { display_name: profileMap.get(r.user_id) ?? null },
-        quizzes: { title: qm.get(r.quiz_id) ?? "—" },
-      })));
       setLoading(false);
     })();
   }, [isAdmin]);
@@ -112,14 +82,6 @@ export default function Admin() {
   const productionReadyCount = distribution.find((d) => d.level === "production_ready")?.count ?? 0;
   const totalAttempts = attempts.length;
   const avgScore = totalAttempts ? Math.round(attempts.reduce((s, a) => s + a.score, 0) / totalAttempts) : 0;
-  const passedAttempts = attempts.filter((a) => a.score >= 70).length;
-  const passRate = totalAttempts ? Math.round((passedAttempts / totalAttempts) * 100) : 0;
-  const passFailData = [
-    { name: t("admin2.passed"), value: passedAttempts },
-    { name: t("admin2.failed"), value: Math.max(0, totalAttempts - passedAttempts) },
-  ];
-  const violationsByType: Record<string, number> = {};
-  violations.forEach((v) => { violationsByType[v.violation_type] = (violationsByType[v.violation_type] ?? 0) + 1; });
 
   // Aggregate weak areas
   const weakMap = new Map<string, { id: string; title: string; slug: string; count: number }>();
@@ -154,81 +116,25 @@ export default function Admin() {
       </div>
 
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8 animate-fade-up">
-        <Card className="p-5">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
+      <div className="grid gap-4 md:grid-cols-3 mb-8 animate-fade-up">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
             <ShieldCheck className="h-3.5 w-3.5" /> {t("admin.productionReady")}
           </div>
-          <div className="text-2xl font-semibold">{productionReadyCount}</div>
-          <div className="text-[11px] text-muted-foreground mt-1">/ {byUser.size} assessed</div>
+          <div className="text-3xl font-semibold">{productionReadyCount}</div>
+          <div className="text-xs text-muted-foreground mt-1">/ {byUser.size} members assessed</div>
         </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
             <Activity className="h-3.5 w-3.5" /> {t("admin.totalAttempts")}
           </div>
-          <div className="text-2xl font-semibold">{totalAttempts}</div>
+          <div className="text-3xl font-semibold">{totalAttempts}</div>
         </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
             <Target className="h-3.5 w-3.5" /> {t("admin.avgScore")}
           </div>
-          <div className="text-2xl font-semibold">{avgScore}<span className="text-sm text-muted-foreground">/100</span></div>
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
-            <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> {t("admin2.fraudCount")}
-          </div>
-          <div className="text-2xl font-semibold">{violations.length}</div>
-          <div className="text-[11px] text-muted-foreground mt-1">last 100 events</div>
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> {t("admin2.passFail")}
-          </div>
-          <div className="text-2xl font-semibold">{passRate}%</div>
-          <div className="text-[11px] text-muted-foreground mt-1">{passedAttempts}/{totalAttempts} passed</div>
-        </Card>
-      </div>
-
-      {/* Pass/Fail + Monitoring */}
-      <div className="grid gap-4 md:grid-cols-2 mb-8 animate-fade-up">
-        <Card className="p-6">
-          <div className="flex items-center gap-2 text-sm font-semibold mb-4">
-            <Target className="h-4 w-4 text-primary" /> {t("admin2.passFail")}
-          </div>
-          {totalAttempts === 0 ? (
-            <div className="text-sm text-muted-foreground py-12 text-center">{t("admin.noData")}</div>
-          ) : (
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={passFailData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
-                    <Cell fill="hsl(160 84% 39%)" />
-                    <Cell fill="hsl(0 84% 60%)" />
-                  </Pie>
-                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-2 text-sm font-semibold mb-4">
-            <ShieldAlert className="h-4 w-4 text-amber-500" /> {t("admin2.monitoring")}
-          </div>
-          {violations.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-12 text-center">{t("admin2.noViolations")}</div>
-          ) : (
-            <div className="space-y-2">
-              {Object.entries(violationsByType).slice(0, 6).map(([type, count]) => (
-                <div key={type} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground capitalize">{type.replace(/_/g, " ")}</span>
-                  <Badge variant="secondary">{String(count)}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="text-3xl font-semibold">{avgScore}<span className="text-base text-muted-foreground">/100</span></div>
         </Card>
       </div>
 
@@ -271,31 +177,6 @@ export default function Admin() {
             ))}
           </div>
         </Card>
-      )}
-
-      {/* Violation logs */}
-      {violations.length > 0 && (
-        <div className="animate-fade-up mb-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("admin2.violationLogs")}</h2>
-          <Card>
-            <div className="divide-y divide-border">
-              {violations.slice(0, 12).map((v) => (
-                <div key={v.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                  <div className="min-w-0 flex items-center gap-3">
-                    <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">{v.profiles?.display_name ?? v.user_id.slice(0, 8)}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {v.quizzes?.title} · {new Date(v.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] capitalize shrink-0">{v.violation_type.replace(/_/g, " ")}</Badge>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
       )}
 
       {/* Recent activity */}

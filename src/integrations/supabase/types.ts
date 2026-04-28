@@ -14,36 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      assessment_violations: {
-        Row: {
-          attempt_id: string | null
-          created_at: string
-          details: Json | null
-          id: string
-          quiz_id: string
-          user_id: string
-          violation_type: string
-        }
-        Insert: {
-          attempt_id?: string | null
-          created_at?: string
-          details?: Json | null
-          id?: string
-          quiz_id: string
-          user_id: string
-          violation_type: string
-        }
-        Update: {
-          attempt_id?: string | null
-          created_at?: string
-          details?: Json | null
-          id?: string
-          quiz_id?: string
-          user_id?: string
-          violation_type?: string
-        }
-        Relationships: []
-      }
       certifications: {
         Row: {
           attempts_count: number

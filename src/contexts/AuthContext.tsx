@@ -4,8 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Role = "admin" | "engineer" | "viewer";
 
-const LOCAL_ADMIN_KEY = "poulina.localAdmin";
-
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
@@ -14,7 +12,6 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
-  isLocalAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -24,9 +21,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isLocalAdmin, setIsLocalAdmin] = useState<boolean>(
-    () => typeof window !== "undefined" && localStorage.getItem(LOCAL_ADMIN_KEY) === "1"
-  );
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
@@ -56,40 +50,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    // Special admin shortcut: typing exactly "admin" grants local admin access.
-    if (email.trim().toLowerCase() === "admin") {
-      localStorage.setItem(LOCAL_ADMIN_KEY, "1");
-      setIsLocalAdmin(true);
-      return { error: null };
-    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
   };
 
   const signOut = async () => {
-    localStorage.removeItem(LOCAL_ADMIN_KEY);
-    setIsLocalAdmin(false);
     await supabase.auth.signOut();
   };
 
-  // Synthetic user/session when in local-admin mode so guarded routes render.
-  const effectiveUser = user ?? (isLocalAdmin ? ({ id: "local-admin", email: "admin@local" } as unknown as User) : null);
-  const effectiveSession = session ?? (isLocalAdmin ? ({ user: effectiveUser } as unknown as Session) : null);
-  const isAdmin = roles.includes("admin") || isLocalAdmin;
+  const isAdmin = roles.includes("admin");
 
   return (
-    <AuthContext.Provider
-      value={{
-        user: effectiveUser,
-        session: effectiveSession,
-        roles,
-        loading,
-        signIn,
-        signOut,
-        isAdmin,
-        isLocalAdmin,
-      }}
-    >
+    <AuthContext.Provider value={{ user, session, roles, loading, signIn, signOut, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );
