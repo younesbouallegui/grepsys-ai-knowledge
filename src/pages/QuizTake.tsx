@@ -145,12 +145,12 @@ export default function QuizTake() {
     if (!quiz) return;
     if (user?.id && !isLocalAdmin) {
       try {
-        await supabase.from("assessment_violations").insert({
+        await supabase.from("assessment_violations").insert([{
           user_id: user.id,
           quiz_id: quiz.id,
           violation_type: type,
           details,
-        });
+        }]);
       } catch {/* ignore */}
     }
   }, [quiz, user?.id, isLocalAdmin]);
