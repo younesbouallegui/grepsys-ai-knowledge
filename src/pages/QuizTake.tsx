@@ -271,7 +271,7 @@ export default function QuizTake() {
             user_id: user.id,
             quiz_id: quiz.id,
             violation_type: String(type),
-            details: details ?? {},
+            details: (details ?? {}) as any,
           },
         ]);
       } catch {}
