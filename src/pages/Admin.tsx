@@ -59,7 +59,13 @@ export default function Admin() {
       setQuizzesMap(new Map((qz ?? []).map((q: any) => [q.id, { title: q.title, passing_score: q.passing_score }])));
 
       // Resolve profile names
-      const userIds = Array.from(new Set([...(c ?? []).map((r: any) => r.user_id), ...(a ?? []).map((r: any) => r.user_id)]));
+      const userIds = Array.from(
+        new Set([
+          ...(c ?? []).map((r: any) => r.user_id),
+          ...(a ?? []).map((r: any) => r.user_id),
+          ...(v ?? []).map((r: any) => r.user_id),
+        ])
+      );
       let profileMap = new Map<string, string | null>();
       if (userIds.length) {
         const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
@@ -68,6 +74,7 @@ export default function Admin() {
 
       setCerts((c ?? []).map((r: any) => ({ ...r, profiles: { display_name: profileMap.get(r.user_id) ?? null } })));
       setAttempts((a ?? []).map((r: any) => ({ ...r, profiles: { display_name: profileMap.get(r.user_id) ?? null } })));
+      setViolations((v ?? []).map((r: any) => ({ ...r, display_name: profileMap.get(r.user_id) ?? null })));
       setLoading(false);
     })();
   }, [isAdmin]);
