@@ -148,33 +148,130 @@ export default function Admin() {
       </div>
 
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-3 mb-8 animate-fade-up">
-        <Card className="p-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8 animate-fade-up">
+        <Card className="p-5">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
             <ShieldCheck className="h-3.5 w-3.5" /> {t("admin.productionReady")}
           </div>
-          <div className="text-3xl font-semibold">{productionReadyCount}</div>
-          <div className="text-xs text-muted-foreground mt-1">/ {byUser.size} members assessed</div>
+          <div className="text-2xl font-semibold">{productionReadyCount}</div>
+          <div className="text-xs text-muted-foreground mt-1">/ {byUser.size} assessed</div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-5">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
             <Activity className="h-3.5 w-3.5" /> {t("admin.totalAttempts")}
           </div>
-          <div className="text-3xl font-semibold">{totalAttempts}</div>
+          <div className="text-2xl font-semibold">{totalAttempts}</div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-5">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
             <Target className="h-3.5 w-3.5" /> {t("admin.avgScore")}
           </div>
-          <div className="text-3xl font-semibold">{avgScore}<span className="text-base text-muted-foreground">/100</span></div>
+          <div className="text-2xl font-semibold">
+            {avgScore}
+            <span className="text-sm text-muted-foreground">/100</span>
+          </div>
+        </Card>
+        <Card className="p-5">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
+            <TrendingUp className="h-3.5 w-3.5" /> {t("admin.passRate")}
+          </div>
+          <div className="text-2xl font-semibold">
+            {passRate}
+            <span className="text-sm text-muted-foreground">%</span>
+          </div>
+        </Card>
+        <Card className={`p-5 ${fraudCount > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2">
+            <ShieldAlert className="h-3.5 w-3.5" /> {t("admin.fraudDetected")}
+          </div>
+          <div className={`text-2xl font-semibold ${fraudCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>{fraudCount}</div>
+          <div className="text-xs text-muted-foreground mt-1">{usersWithViolations} users</div>
         </Card>
       </div>
 
-      {/* Distribution chart */}
+      {/* Charts row: distribution + pass/fail */}
+      <div className="grid gap-4 lg:grid-cols-3 mb-8 animate-fade-up">
+        <Card className="p-6 lg:col-span-2">
+          <div className="flex items-center gap-2 text-sm font-semibold mb-4">
+            <Users className="h-4 w-4 text-primary" /> {t("admin.teamDistribution")}
+          </div>
+          {byUser.size === 0 ? (
+            <div className="text-sm text-muted-foreground py-12 text-center">{t("admin.noData")}</div>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={distribution}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <YAxis allowDecimals={false} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {distribution.map((d) => (
+                      <Cell key={d.level} fill={levelColors[d.level]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 text-sm font-semibold mb-4">
+            <Award className="h-4 w-4 text-primary" /> {t("admin.certificationReadiness")}
+          </div>
+          {totalAttempts === 0 ? (
+            <div className="text-sm text-muted-foreground py-12 text-center">{t("admin.noData")}</div>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={passFailData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                    {passFailData.map((d, i) => (
+                      <Cell key={i} fill={d.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "11px" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Monitoring panel */}
       <Card className="p-6 mb-8 animate-fade-up">
         <div className="flex items-center gap-2 text-sm font-semibold mb-4">
-          <Users className="h-4 w-4 text-primary" /> {t("admin.teamDistribution")}
+          <ShieldAlert className="h-4 w-4 text-amber-500" /> {t("admin.monitoringTitle")} — {t("admin.violationLog")}
         </div>
+        {violations.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-8 text-center">{t("admin.noViolations")}</div>
+        ) : (
+          <div className="divide-y divide-border max-h-[420px] overflow-y-auto -mx-6">
+            {violations.map((v) => (
+              <div key={v.id} className="flex items-center justify-between gap-4 px-6 py-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-sm truncate">{v.display_name ?? v.user_id.slice(0, 8)}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {quizzesMap.get(v.quiz_id)?.title ?? "—"} · {new Date(v.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <Badge
+                  variant={v.violation_type === "auto_submit" ? "destructive" : "secondary"}
+                  className="text-[10px] shrink-0"
+                >
+                  {v.violation_type}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
         {byUser.size === 0 ? (
           <div className="text-sm text-muted-foreground py-12 text-center">{t("admin.noData")}</div>
         ) : (
