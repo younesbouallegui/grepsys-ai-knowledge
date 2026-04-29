@@ -30,6 +30,24 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile || bun install
 
+      - name: Validate required build secrets
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+        run: |
+          missing=0
+          for v in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY VITE_SUPABASE_PROJECT_ID; do
+            if [ -z "${!v}" ]; then
+              echo "::error::Missing required GitHub Secret: $v"
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "Add the secrets in: Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -37,8 +55,52 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
         run: bun run build
 
-      - name: SPA fallback (copy index.html to 404.html)
-        run: cp dist/index.html dist/404.html
+      - name: Verify build output
+        run: |
+          test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
+          test -d dist/assets || { echo "::error::dist/assets missing"; exit 1; }
+          ls -la dist/
+
+      - name: Generate SPA 404 fallback (preserves deep-link path)
+        run: |
+          cat > dist/404.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <title>Loading…</title>
+              <script>
+                // Preserve the originally requested path so the SPA can restore it after redirect to /
+                (function () {
+                  var l = window.location;
+                  sessionStorage.setItem(
+                    'spa-redirect',
+                    l.pathname + l.search + l.hash
+                  );
+                  l.replace(l.origin + '/');
+                })();
+              </script>
+            </head>
+            <body></body>
+          </html>
+          HTML
+
+      - name: Inject SPA path-restore snippet into index.html
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          p = pathlib.Path('dist/index.html')
+          html = p.read_text()
+          snippet = (
+            '<script>(function(){var r=sessionStorage.getItem("spa-redirect");'
+            'if(r){sessionStorage.removeItem("spa-redirect");'
+            'history.replaceState(null,"",r);}})();</script>'
+          )
+          if snippet not in html:
+            html = html.replace('</head>', snippet + '</head>', 1)
+            p.write_text(html)
+          print(html[:500])
+          PY
 
       - name: Ensure CNAME for custom domain
         run: echo "aiknowledge.younesblg.com" > dist/CNAME
