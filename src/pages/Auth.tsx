@@ -9,8 +9,7 @@ import { Card } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 import logo from "@/assets/poulina-logo.png";
 
 export default function Auth() {
@@ -20,7 +19,6 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
   if (loading) return null;
   if (user) return <Navigate to="/" replace />;
@@ -29,27 +27,9 @@ export default function Auth() {
     e.preventDefault();
     setBusy(true);
     const { error } = await signIn(email, password);
-    if (error) toast.error(t("auth.invalid"));
+    if (error) toast.error(error);
     else navigate("/", { replace: true });
     setBusy(false);
-  };
-
-  const seedDemo = async () => {
-    setSeeding(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("seed-demo-user", { body: {} });
-      if (error) throw error;
-      const creds = data?.credentials;
-      if (creds) {
-        setEmail(creds.email);
-        setPassword(creds.password);
-        toast.success(`Demo account ready: ${creds.email}`);
-      }
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to create demo account");
-    } finally {
-      setSeeding(false);
-    }
   };
 
   return (
@@ -86,13 +66,6 @@ export default function Auth() {
             </Button>
           </form>
 
-          <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-wider text-muted-foreground">
-            <span className="h-px flex-1 bg-border" /> Demo <span className="h-px flex-1 bg-border" />
-          </div>
-          <Button type="button" variant="outline" className="w-full gap-2" onClick={seedDemo} disabled={seeding}>
-            {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            Create demo admin account
-          </Button>
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
             {t("auth.contactAdmin")}

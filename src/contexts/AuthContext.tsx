@@ -1,12 +1,16 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
 
 type Role = "admin" | "engineer" | "viewer";
 
+interface MockUser {
+  id: string;
+  email: string;
+  user_metadata: { display_name: string };
+}
+
 interface AuthContextValue {
-  user: User | null;
-  session: Session | null;
+  user: MockUser | null;
+  session: { user: MockUser } | null;
   roles: Role[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -15,50 +19,42 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const STORAGE_KEY = "mock_auth_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [user, setUser] = useState<MockUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        setTimeout(async () => {
-          const { data } = await supabase.from("user_roles").select("role").eq("user_id", s.user.id);
-          setRoles((data?.map((r) => r.role) as Role[]) ?? []);
-        }, 0);
-      } else {
-        setRoles([]);
-      }
-    });
-
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        const { data } = await supabase.from("user_roles").select("role").eq("user_id", s.user.id);
-        setRoles((data?.map((r) => r.role) as Role[]) ?? []);
-      }
-      setLoading(false);
-    });
-
-    return () => sub.subscription.unsubscribe();
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setUser(JSON.parse(raw));
+    } catch {}
+    setLoading(false);
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    if (!email || !password) {
+      return { error: "Email and password are required" };
+    }
+    const mockUser: MockUser = {
+      id: `mock-${btoa(email).replace(/=/g, "")}`,
+      email,
+      user_metadata: { display_name: email.split("@")[0] },
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(mockUser));
+    setUser(mockUser);
+    return { error: null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem(STORAGE_KEY);
+    setUser(null);
   };
 
-  const isAdmin = roles.includes("admin");
+  const roles: Role[] = user ? ["admin", "engineer", "viewer"] : [];
+  const session = user ? { user } : null;
+  const isAdmin = !!user;
 
   return (
     <AuthContext.Provider value={{ user, session, roles, loading, signIn, signOut, isAdmin }}>
