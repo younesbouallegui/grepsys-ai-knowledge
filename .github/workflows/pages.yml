@@ -10,6 +10,11 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  CANONICAL_SUPABASE_URL: https://yweknqfqvjkxepivuufc.supabase.co
+  CANONICAL_SUPABASE_PROJECT_ID: yweknqfqvjkxepivuufc
+  CANONICAL_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3ZWtucWZxdmpreGVwaXZ1dWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNjIzNDIsImV4cCI6MjA5MjYzODM0Mn0.TLTutE0KrgTIjjP8PePqNFf-GuqXAeIdE3vNHIDv8Ic
+
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -30,58 +35,88 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile || bun install
 
-      - name: Resolve Supabase env (secrets > committed .env > hardcoded fallback)
-        id: env
+      - name: Prepare Vite production environment
         run: |
-          # Prefer GitHub Secrets, fall back to the committed .env (public anon keys are safe),
-          # and finally fall back to the known project values so the build NEVER ships empty.
+          set -euo pipefail
+
           URL="${{ secrets.VITE_SUPABASE_URL }}"
           KEY="${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}"
+          ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"
           PID="${{ secrets.VITE_SUPABASE_PROJECT_ID }}"
 
+          [ -n "$ANON_KEY" ] && KEY="${KEY:-$ANON_KEY}"
+
           if [ -f .env ]; then
-            # shellcheck disable=SC1091
-            set -a; . ./.env; set +a || true
-            URL="${URL:-$VITE_SUPABASE_URL}"
-            KEY="${KEY:-$VITE_SUPABASE_PUBLISHABLE_KEY}"
-            PID="${PID:-$VITE_SUPABASE_PROJECT_ID}"
+            set +u
+            set -a
+            . ./.env
+            set +a
+            set -u
+            URL="${URL:-${VITE_SUPABASE_URL:-}}"
+            KEY="${KEY:-${VITE_SUPABASE_PUBLISHABLE_KEY:-${VITE_SUPABASE_ANON_KEY:-}}}"
+            PID="${PID:-${VITE_SUPABASE_PROJECT_ID:-}}"
           fi
 
-          URL="${URL:-https://yweknqfqvjkxepivuufc.supabase.co}"
-          KEY="${KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3ZWtucWZxdmpreGVwaXZ1dWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNjIzNDIsImV4cCI6MjA5MjYzODM0Mn0.TLTutE0KrgTIjjP8PePqNFf-GuqXAeIdE3vNHIDv8Ic}"
-          PID="${PID:-yweknqfqvjkxepivuufc}"
+          URL="${URL:-$CANONICAL_SUPABASE_URL}"
+          KEY="${KEY:-$CANONICAL_SUPABASE_PUBLISHABLE_KEY}"
+          PID="${PID:-$CANONICAL_SUPABASE_PROJECT_ID}"
 
-          echo "url=$URL"   >> "$GITHUB_OUTPUT"
-          echo "key=$KEY"   >> "$GITHUB_OUTPUT"
-          echo "pid=$PID"   >> "$GITHUB_OUTPUT"
+          export VITE_SUPABASE_URL="$URL"
+          export VITE_SUPABASE_PUBLISHABLE_KEY="$KEY"
+          export VITE_SUPABASE_ANON_KEY="$KEY"
+          export VITE_SUPABASE_PROJECT_ID="$PID"
 
-          # Also write a .env so vite picks them up automatically
+          python3 - <<'PY'
+          import base64, json, os, sys
+          url = os.environ["VITE_SUPABASE_URL"]
+          key = os.environ["VITE_SUPABASE_PUBLISHABLE_KEY"]
+          pid = os.environ["VITE_SUPABASE_PROJECT_ID"]
+          if not url.startswith("https://") or pid not in url:
+              sys.exit("::error::VITE_SUPABASE_URL is missing, invalid, or does not match VITE_SUPABASE_PROJECT_ID")
+          if len(key) < 80 or key.count(".") != 2:
+              sys.exit("::error::VITE_SUPABASE_PUBLISHABLE_KEY / anon key is missing or invalid")
+          payload = key.split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload.encode()))
+          if claims.get("ref") != pid:
+              sys.exit("::error::Publishable key project ref does not match VITE_SUPABASE_PROJECT_ID")
+          PY
+
           {
             echo "VITE_SUPABASE_URL=$URL"
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=$KEY"
+            echo "VITE_SUPABASE_ANON_KEY=$KEY"
             echo "VITE_SUPABASE_PROJECT_ID=$PID"
-          } > .env
+          } >> "$GITHUB_ENV"
 
-          echo "Resolved Supabase URL: $URL"
-          echo "Resolved Project ID:   $PID"
-          echo "Key length:            ${#KEY}"
+          {
+            echo "VITE_SUPABASE_URL=$URL"
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=$KEY"
+            echo "VITE_SUPABASE_ANON_KEY=$KEY"
+            echo "VITE_SUPABASE_PROJECT_ID=$PID"
+          } > .env.production.local
+
+          echo "Resolved backend URL: $URL"
+          echo "Resolved project ID:  $PID"
+          echo "Publishable key validated for project parity"
 
       - name: Build
-        env:
-          VITE_SUPABASE_URL: ${{ steps.env.outputs.url }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ steps.env.outputs.key }}
-          VITE_SUPABASE_PROJECT_ID: ${{ steps.env.outputs.pid }}
         run: bun run build
 
-      - name: Verify build output (incl. Supabase URL is baked into bundle)
+      - name: Verify build output and inlined backend config
         run: |
+          set -euo pipefail
           test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
           test -d dist/assets || { echo "::error::dist/assets missing"; exit 1; }
-          if ! grep -rq "yweknqfqvjkxepivuufc.supabase.co" dist/assets; then
-            echo "::error::Supabase URL was not inlined into the production bundle."
+          if ! grep -R --binary-files=without-match -Fq "$VITE_SUPABASE_URL" dist/assets; then
+            echo "::error::VITE_SUPABASE_URL was not inlined into the production bundle."
             exit 1
           fi
-          echo "✓ Supabase URL successfully inlined into bundle"
+          if ! grep -R --binary-files=without-match -Fq "$VITE_SUPABASE_PUBLISHABLE_KEY" dist/assets; then
+            echo "::error::VITE_SUPABASE_PUBLISHABLE_KEY / anon key was not inlined into the production bundle."
+            exit 1
+          fi
+          echo "✓ Backend URL and publishable key successfully inlined into bundle"
           ls -la dist/
 
       - name: Generate SPA 404 fallback (preserves deep-link path)
