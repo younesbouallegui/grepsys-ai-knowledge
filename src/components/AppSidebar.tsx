@@ -63,9 +63,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="px-3 py-4">
-        <div className="flex items-center gap-2.5 overflow-hidden">
-          <img src={logo} alt="" className="h-8 w-8 rounded shrink-0" />
+      <SidebarHeader className={collapsed ? "px-2 py-4" : "px-3 py-4"}>
+        <div className={`flex items-center overflow-hidden ${collapsed ? "justify-center" : "gap-2.5"}`}>
+          <img
+            src={logo}
+            alt="Poulina"
+            className={`rounded shrink-0 ${collapsed ? "h-10 w-10" : "h-8 w-8"}`}
+          />
           {!collapsed && (
             <div className="min-w-0">
               <div className="text-sm font-semibold tracking-tight font-display truncate">Poulina AI</div>
