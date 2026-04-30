@@ -9,9 +9,10 @@ Free, automatic deployment to **https://aiknowledge.younesblg.com** via GitHub A
 3. Go to **Settings → Secrets and variables → Actions** and add:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - Optional alias: `VITE_SUPABASE_ANON_KEY` (only needed if you prefer that name; it must contain the same public anon/publishable key)
    - `VITE_SUPABASE_PROJECT_ID`
 
-   (Values are in the project `.env` file.)
+   The workflow also includes the project’s canonical public fallback values, so GitHub Pages builds remain stable even if repository secrets are not configured yet.
 
 ## 2. Custom domain (aiknowledge.younesblg.com)
 
@@ -30,10 +31,12 @@ The repo already contains `public/CNAME`, which Pages reads automatically.
 Every push to `main` triggers `.github/workflows/pages.yml`:
 
 1. Installs deps with Bun
-2. Runs `vite build` → outputs to `dist/`
-3. Copies `index.html` → `404.html` (SPA deep-link fallback)
-4. Writes `CNAME` and `.nojekyll`
-5. Uploads & deploys via official `actions/deploy-pages@v4`
+2. Resolves and validates `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_ANON_KEY`, and `VITE_SUPABASE_PROJECT_ID`
+3. Writes `.env.production.local` so Vite loads the same backend configuration during the production build
+4. Runs `vite build` → outputs to `dist/`
+5. Verifies the backend URL and publishable key are baked into the generated bundle before deployment
+6. Writes the SPA fallback, `CNAME`, and `.nojekyll`
+7. Uploads & deploys via official `actions/deploy-pages@v4`
 
 ## 4. SPA routing
 
@@ -41,7 +44,7 @@ GitHub Pages has no server-side fallback. We work around it by serving `404.html
 
 ## 5. Notes
 
-- `VITE_*` vars are baked into the bundle at build time. Update the secrets and re-run the workflow to change them.
+- `VITE_*` vars are baked into the bundle at build time. Update the secrets and re-run the workflow to change them; the workflow fails before deployment if the required backend config is not present in the bundle.
 - Backend (Lovable Cloud / Supabase Edge Functions) is unaffected — it stays managed by Lovable.
 - The existing VPS workflow (`.github/workflows/deploy.yml`) is preserved and independent. Disable it in **Actions → Workflows** if you only want Pages.
 - Base path is `/` (custom domain at root). No `vite.config.ts` change needed.
