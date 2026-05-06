@@ -1,4 +1,13 @@
 project_id = "yweknqfqvjkxepivuufc"
 
+[functions.ask-ai]
+verify_jwt = false
+
+[functions.ask-stream]
+verify_jwt = false
+
+[functions.seed-docs]
+verify_jwt = false
+
 [functions.seed-demo-user]
 verify_jwt = false
