@@ -115,6 +115,33 @@ export default function Dashboard() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Smooth typewriter renderer: drains a buffer char-by-char so big chunks feel natural.
+    let displayed = "";
+    let pending = "";
+    let streamFinished = false;
+    let rafId: number | null = null;
+    const tick = () => {
+      if (pending.length === 0) {
+        rafId = null;
+        if (streamFinished) {
+          setMessages((prev) => prev.map(m =>
+            m.id === assistantId ? { ...m, streaming: false } : m));
+        }
+        return;
+      }
+      // Adaptive speed: drain faster when buffer is large so we never lag behind.
+      const take = Math.max(1, Math.min(pending.length, Math.ceil(pending.length / 8)));
+      displayed += pending.slice(0, take);
+      pending = pending.slice(take);
+      setMessages((prev) => prev.map(m =>
+        m.id === assistantId ? { ...m, content: displayed } : m));
+      rafId = requestAnimationFrame(tick);
+    };
+    const enqueue = (chunk: string) => {
+      pending += chunk;
+      if (rafId == null) rafId = requestAnimationFrame(tick);
+    };
+
     try {
       const resp = await fetch(STREAM_URL, {
         method: "POST",
@@ -142,7 +169,6 @@ export default function Dashboard() {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let acc = "";
       let done = false;
 
       while (!done) {
@@ -163,18 +189,13 @@ export default function Dashboard() {
             if (payload === "[DONE]") { done = true; break; }
             try {
               const parsed = JSON.parse(payload);
-              // sources event
               if (Array.isArray(parsed)) {
                 setMessages((prev) => prev.map(m =>
                   m.id === assistantId ? { ...m, sources: parsed as Source[] } : m));
                 continue;
               }
               const delta = parsed.choices?.[0]?.delta?.content;
-              if (typeof delta === "string" && delta) {
-                acc += delta;
-                setMessages((prev) => prev.map(m =>
-                  m.id === assistantId ? { ...m, content: acc } : m));
-              }
+              if (typeof delta === "string" && delta) enqueue(delta);
             } catch {
               buffer = line + "\n" + buffer;
               break;
@@ -183,8 +204,11 @@ export default function Dashboard() {
         }
       }
 
-      setMessages((prev) => prev.map(m =>
-        m.id === assistantId ? { ...m, streaming: false, content: acc || m.content } : m));
+      streamFinished = true;
+      if (rafId == null) {
+        setMessages((prev) => prev.map(m =>
+          m.id === assistantId ? { ...m, streaming: false } : m));
+      }
     } catch (err: any) {
       if (err.name === "AbortError") {
         setMessages((prev) => prev.map(m =>
