@@ -381,14 +381,14 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           <div className="rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm whitespace-pre-wrap break-words">
             {msg.content}
           </div>
+        ) : msg.streaming ? (
+          <div className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground/90">
+            {msg.content || <TypingDots />}
+            {msg.content && <span className="inline-block w-1.5 h-4 ml-0.5 bg-primary/70 animate-pulse align-middle" />}
+          </div>
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-display prose-pre:bg-muted prose-pre:text-foreground">
-            {msg.content ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-            ) : (
-              <TypingDots />
-            )}
-            {msg.streaming && msg.content && <span className="inline-block w-1.5 h-4 ml-0.5 bg-primary/70 animate-pulse align-middle" />}
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
           </div>
         )}
         {!isUser && msg.sources && msg.sources.length > 0 && !msg.streaming && (
