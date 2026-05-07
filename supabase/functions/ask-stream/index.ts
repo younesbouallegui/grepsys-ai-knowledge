@@ -112,7 +112,7 @@ If the answer is not present, say so honestly. Format in clean markdown.`;
         messages,
         temperature: 0.4,
         top_p: 0.9,
-        max_tokens: 2048,
+        max_tokens: 1024,
         stream: true,
       }),
     });
