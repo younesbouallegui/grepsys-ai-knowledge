@@ -19,10 +19,18 @@ Deno.serve(async (req) => {
     try {
       zabbixToken = await zabbixRpc("user.login", { username, password });
     } catch (e) {
-      console.error("Zabbix login failed", e);
+      const msg = String((e as Error).message ?? e);
+      console.error("Zabbix login failed", msg);
+      // Surface configuration errors clearly; only mask true credential errors.
+      const isCredError = /login|password|incorrect|permission/i.test(msg) &&
+        !/non-JSON|ZABBIX_API_URL/i.test(msg);
       return new Response(
-        JSON.stringify({ error: "Invalid username or password. Please check your Zabbix credentials." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({
+          error: isCredError
+            ? "Invalid username or password. Please check your Zabbix credentials."
+            : `Zabbix configuration error: ${msg}`,
+        }),
+        { status: isCredError ? 401 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
