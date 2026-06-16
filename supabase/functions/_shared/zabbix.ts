@@ -1,6 +1,33 @@
 // Shared Zabbix JSON-RPC helpers.
-export const ZABBIX_URL = Deno.env.get("ZABBIX_API_URL") ??
-  "https://zabbix.younesblg.com/api_jsonrpc.php";
+const configuredZabbixUrl = Deno.env.get("ZABBIX_API_URL") ??
+  "https://zabbix.younesblg.com";
+
+function getZabbixApiCandidates(rawUrl: string): string[] {
+  const value = rawUrl.trim();
+  const candidates: string[] = [];
+
+  try {
+    const url = new URL(value);
+    const normalizedPath = url.pathname.replace(/\/+$/, "");
+    if (normalizedPath.endsWith("/api_jsonrpc.php")) {
+      candidates.push(url.toString());
+    } else {
+      const apiUrl = new URL(url.toString());
+      apiUrl.pathname = `${normalizedPath || ""}/api_jsonrpc.php`;
+      candidates.push(apiUrl.toString());
+      candidates.push(url.toString());
+    }
+  } catch {
+    const withoutTrailingSlash = value.replace(/\/+$/, "");
+    candidates.push(
+      withoutTrailingSlash.endsWith("/api_jsonrpc.php")
+        ? withoutTrailingSlash
+        : `${withoutTrailingSlash}/api_jsonrpc.php`,
+    );
+  }
+
+  return [...new Set(candidates)];
+}
 
 export async function zabbixRpc(
   method: string,
@@ -22,26 +49,31 @@ export async function zabbixRpc(
     // also include body auth for compatibility with older Zabbix
     body.auth = auth;
   }
-  const res = await fetch(ZABBIX_URL, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  let json: any;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error(
-      `Zabbix ${method} returned non-JSON (status ${res.status}). ` +
-      `Check ZABBIX_API_URL — it must end with /api_jsonrpc.php. ` +
-      `Response starts with: ${text.slice(0, 80)}`,
-    );
+  let lastNonJson = "";
+  for (const endpoint of getZabbixApiCandidates(configuredZabbixUrl)) {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    let json: any;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      lastNonJson = `Zabbix ${method} returned non-JSON from ${endpoint} (status ${res.status}). Response starts with: ${text.slice(0, 80)}`;
+      continue;
+    }
+    if (json.error) {
+      throw new Error(`Zabbix ${method} failed: ${json.error.data ?? json.error.message}`);
+    }
+    return json.result;
   }
-  if (json.error) {
-    throw new Error(`Zabbix ${method} failed: ${json.error.data ?? json.error.message}`);
-  }
-  return json.result;
+
+  throw new Error(
+    `${lastNonJson || `Zabbix ${method} did not return JSON.`} ` +
+      `Set ZABBIX_API_URL to the Zabbix site root or /api_jsonrpc.php endpoint.`,
+  );
 }
 
 // Map Zabbix roleid → platform app_role.
