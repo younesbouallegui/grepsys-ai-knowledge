@@ -32,7 +32,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { scoreToLevel, highestLevel, SkillLevel } from "@/lib/skill";
+import { SkillLevel } from "@/lib/skill";
 import {
   attachInputBlockers,
   attachViolationListeners,
