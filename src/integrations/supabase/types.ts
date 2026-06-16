@@ -391,57 +391,7 @@ export type Database = {
       }
     }
     Views: {
-      quiz_questions_public: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          options: Json | null
-          position: number | null
-          question_text: string | null
-          question_type: Database["public"]["Enums"]["question_type"] | null
-          quiz_id: string | null
-          related_document_id: string | null
-          weight: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          options?: Json | null
-          position?: number | null
-          question_text?: string | null
-          question_type?: Database["public"]["Enums"]["question_type"] | null
-          quiz_id?: string | null
-          related_document_id?: string | null
-          weight?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          options?: Json | null
-          position?: number | null
-          question_text?: string | null
-          question_type?: Database["public"]["Enums"]["question_type"] | null
-          quiz_id?: string | null
-          related_document_id?: string | null
-          weight?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quiz_questions_quiz_id_fkey"
-            columns: ["quiz_id"]
-            isOneToOne: false
-            referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_related_document_id_fkey"
-            columns: ["related_document_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       has_role: {
