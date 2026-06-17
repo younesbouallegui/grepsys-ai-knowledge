@@ -38,12 +38,17 @@ export default function Skills() {
   useEffect(() => {
     if (!user) return;
     (async () => {
+      // The Supabase auth user id may differ from the AuthContext platform id
+      // (e.g. when signing in via Zabbix SSO). quiz_attempts/certifications
+      // are stored against auth.uid(), so use that for the queries.
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id ?? user.id;
       const [{ data: c }, { data: a }] = await Promise.all([
-        supabase.from("certifications").select("*").eq("user_id", user.id),
+        supabase.from("certifications").select("*").eq("user_id", uid),
         supabase
           .from("quiz_attempts")
           .select("id, score, level, completed_at, weak_areas, quizzes(title, category)")
-          .eq("user_id", user.id)
+          .eq("user_id", uid)
           .order("completed_at", { ascending: false })
           .limit(20),
       ]);
