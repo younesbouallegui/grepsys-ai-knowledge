@@ -443,11 +443,30 @@ export type Database = {
         Args: { p_details?: Json; p_quiz_id: string; p_violation_type: string }
         Returns: undefined
       }
+      record_assessment_violation_as: {
+        Args: {
+          p_details?: Json
+          p_quiz_id: string
+          p_user_id: string
+          p_violation_type: string
+        }
+        Returns: undefined
+      }
       score_quiz_attempt: {
         Args: {
           p_answers: Json
           p_auto?: boolean
           p_quiz_id: string
+          p_violations_count?: number
+        }
+        Returns: Json
+      }
+      score_quiz_attempt_as: {
+        Args: {
+          p_answers: Json
+          p_auto?: boolean
+          p_quiz_id: string
+          p_user_id: string
           p_violations_count?: number
         }
         Returns: Json
