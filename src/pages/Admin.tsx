@@ -35,8 +35,11 @@ export default function Admin() {
   const [certs, setCerts] = useState<CertRow[]>([]);
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [violations, setViolations] = useState<any[]>([]);
+  const [results, setResults] = useState<any[]>([]);
   const [quizzesMap, setQuizzesMap] = useState<Map<string, { title: string; passing_score: number }>>(new Map());
+  const [profileMap, setProfileMap] = useState<Map<string, string | null>>(new Map());
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     if (!isAdmin || !zabbixToken) return;
