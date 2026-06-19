@@ -133,14 +133,30 @@ Deno.serve(async (req) => {
         profiles = profs ?? [];
       }
 
+      const { data: results } = await client
+        .from("assessment_results")
+        .select("id, user_id, assessment_id, score, level, skills, submitted_at")
+        .order("submitted_at", { ascending: false });
+
+      const allUserIds = Array.from(new Set([
+        ...userIds,
+        ...((results ?? []).map((r: any) => r.user_id)),
+      ]));
+      if (allUserIds.length > userIds.length) {
+        const { data: profs } = await client.from("profiles").select("id, display_name").in("id", allUserIds);
+        profiles = profs ?? [];
+      }
+
       return json({
         certs: certs ?? [],
         attempts: attempts ?? [],
         violations: violations ?? [],
         quizzes: quizzes ?? [],
         profiles,
+        results: results ?? [],
       });
     }
+
 
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
