@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.seed-demo-user]
 verify_jwt = false
+
+[functions.assessment-submit]
+verify_jwt = false
