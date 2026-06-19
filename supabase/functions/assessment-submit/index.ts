@@ -1,12 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { zabbixRpc, zabbixUserIdToUuid } from "../_shared/zabbix.ts";
+import { mapZabbixRole, zabbixRpc, zabbixUserIdToUuid } from "../_shared/zabbix.ts";
 
-async function resolveUserId(zabbix_token: string): Promise<string> {
-  const users = await zabbixRpc("user.get", { output: ["userid"] }, zabbix_token);
-  const uid = users?.[0]?.userid;
-  if (!uid) throw new Error("Invalid Zabbix session");
-  return await zabbixUserIdToUuid(String(uid));
+async function resolveUser(zabbix_token: string): Promise<{ id: string; role: "admin" | "editor" | "viewer" }> {
+  const users = await zabbixRpc("user.get", { output: ["userid", "roleid"] }, zabbix_token);
+  const u = users?.[0];
+  if (!u?.userid) throw new Error("Invalid Zabbix session");
+  return { id: await zabbixUserIdToUuid(String(u.userid)), role: mapZabbixRole(u.roleid) };
 }
 
 function sb() {
