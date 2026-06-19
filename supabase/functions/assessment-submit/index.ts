@@ -44,8 +44,36 @@ Deno.serve(async (req) => {
         p_violations_count: body.violations_count ?? 0,
       });
       if (error) throw error;
+
+      // Persist a durable record in assessment_results for full history
+      try {
+        const result = (data ?? {}) as any;
+        const { data: quizMeta } = await client
+          .from("quizzes")
+          .select("category, title")
+          .eq("id", body.quiz_id)
+          .maybeSingle();
+        const skills = {
+          category: quizMeta?.category ?? null,
+          title: quizMeta?.title ?? null,
+          level: result.level ?? null,
+          weak_doc_ids: result.weak_doc_ids ?? [],
+        };
+        await client.from("assessment_results").insert({
+          user_id: platformUserId,
+          assessment_id: body.quiz_id,
+          attempt_id: result.attempt_id ?? null,
+          score: result.score ?? 0,
+          level: result.level ?? "beginner",
+          skills,
+        });
+      } catch (persistErr) {
+        console.error("assessment_results insert failed", persistErr);
+      }
+
       return json({ data });
     }
+
 
     if (action === "violation") {
       if (!body.quiz_id) return json({ error: "Missing quiz_id" }, 400);
