@@ -309,6 +309,48 @@ export default function Admin() {
           </Card>
         )}
       </div>
+
+      {/* Full assessment history (chronological) */}
+      <div className="animate-fade-up mt-8">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          Full Assessment History ({results.length})
+        </h2>
+        {results.length === 0 ? (
+          <Card className="p-8 text-center text-sm text-muted-foreground">No submissions yet</Card>
+        ) : (
+          <Card>
+            <div className="divide-y divide-border max-h-[520px] overflow-y-auto">
+              {results.map((r) => {
+                const quiz = quizzesMap.get(r.assessment_id);
+                const title = r.skills?.title ?? quiz?.title ?? r.assessment_id.slice(0, 8);
+                const category = r.skills?.category;
+                return (
+                  <div key={r.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm truncate">
+                        {profileMap.get(r.user_id) ?? r.user_id.slice(0, 8)}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {title} · {new Date(r.submitted_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm font-medium">{r.score}/100</span>
+                      <SkillBadge level={r.level as SkillLevel} />
+                      {category && (
+                        <Badge variant="outline" className="text-[10px]">
+                          {t(`docs.categories.${category}`, category)}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+      </div>
     </div>
   );
 }
