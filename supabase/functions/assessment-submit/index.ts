@@ -75,13 +75,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "admin_data") {
-      // Verify admin role
-      const { data: roles, error: rErr } = await client
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", platformUserId);
-      if (rErr) throw rErr;
-      if (!(roles ?? []).some((r: any) => r.role === "admin")) {
+      if (userRole !== "admin") {
         return json({ error: "forbidden" }, 403);
       }
 
