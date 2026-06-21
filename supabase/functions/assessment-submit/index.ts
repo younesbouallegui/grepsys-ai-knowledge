@@ -3,10 +3,18 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { mapZabbixRole, zabbixRpc, zabbixUserIdToUuid } from "../_shared/zabbix.ts";
 
 async function resolveUser(zabbix_token: string): Promise<{ id: string; role: "admin" | "editor" | "viewer" }> {
-  const users = await zabbixRpc("user.get", { output: ["userid", "roleid"] }, zabbix_token);
-  const u = users?.[0];
-  if (!u?.userid) throw new Error("Invalid Zabbix session");
-  return { id: await zabbixUserIdToUuid(String(u.userid)), role: mapZabbixRole(u.roleid) };
+  // user.checkAuthentication returns the session's OWN user (not all users).
+  // Using user.get without filters returns ALL users for super-admin, which
+  // would resolve as the wrong identity.
+  const me = await zabbixRpc(
+    "user.checkAuthentication",
+    { sessionid: zabbix_token },
+    zabbix_token,
+  );
+  const userid = me?.userid;
+  const roleid = me?.roleid;
+  if (!userid) throw new Error("Invalid Zabbix session");
+  return { id: await zabbixUserIdToUuid(String(userid)), role: mapZabbixRole(roleid) };
 }
 
 function sb() {
