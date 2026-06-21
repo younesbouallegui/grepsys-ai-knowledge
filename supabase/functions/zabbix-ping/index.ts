@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
       });
     }
     try {
-      const result = await zabbixRpc("user.checkAuthentication", { sessionid: zabbix_token }, zabbix_token);
+      const result = await zabbixRpc("user.checkAuthentication", { sessionid: zabbix_token });
       return new Response(JSON.stringify({ valid: !!result }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
