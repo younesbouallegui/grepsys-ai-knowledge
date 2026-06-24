@@ -24,9 +24,11 @@ interface AuthContextValue {
   session: { user: PlatformUser } | null;
   zabbixUser: ZabbixUser | null;
   zabbixToken: string | null;
+  ssoSessionToken: string | null;
   roles: Role[];
   loading: boolean;
   signIn: (username: string, password: string) => Promise<{ error: string | null }>;
+  signInFromSso: (payload: SsoAcceptPayload) => void;
   signOut: () => Promise<void>;
   isAdmin: boolean;
 }
@@ -35,10 +37,20 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const STORAGE_KEY = "zabbix_auth_session";
 const PING_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
+interface SsoAcceptPayload {
+  session_token: string;
+  user: ZabbixUser;
+  platform_user_id: string;
+  role: Role;
+  display_name?: string;
+}
+
 interface StoredSession {
   user: PlatformUser;
   zabbixUser: ZabbixUser;
-  zabbixToken: string;
+  zabbixToken: string | null;       // present for Zabbix-password sessions
+  ssoSessionToken?: string | null;  // present for SSO-minted sessions
+  authSource: "zabbix" | "sso";
   role: Role;
 }
 
@@ -58,9 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  // Keep-alive ping while signed in
+  // Keep-alive ping while signed in via Zabbix password (SSO sessions are self-validating).
   useEffect(() => {
-    if (!state?.zabbixToken) return;
+    if (!state?.zabbixToken || state.authSource !== "zabbix") return;
     const ping = async () => {
       try {
         const { data } = await supabase.functions.invoke("zabbix-ping", {
@@ -77,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       if (pingTimer.current) window.clearInterval(pingTimer.current);
     };
-  }, [state?.zabbixToken]);
+  }, [state?.zabbixToken, state?.authSource]);
 
   const doSignOut = async (reason?: string) => {
     localStorage.removeItem(STORAGE_KEY);
@@ -116,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: platformUser,
         zabbixUser: data.user,
         zabbixToken: data.zabbix_token,
+        authSource: "zabbix",
         role: data.role,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
@@ -126,6 +139,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInFromSso = (payload: SsoAcceptPayload) => {
+    const platformUser: PlatformUser = {
+      id: payload.platform_user_id,
+      email: payload.user.email,
+      user_metadata: {
+        display_name:
+          payload.display_name ||
+          [payload.user.name, payload.user.surname].filter(Boolean).join(" ").trim() ||
+          payload.user.username,
+      },
+    };
+    const stored: StoredSession = {
+      user: platformUser,
+      zabbixUser: payload.user,
+      zabbixToken: null,
+      ssoSessionToken: payload.session_token,
+      authSource: "sso",
+      role: payload.role,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    setState(stored);
+  };
+
   const signOut = async () => {
     await doSignOut();
   };
@@ -133,13 +169,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user = state?.user ?? null;
   const zabbixUser = state?.zabbixUser ?? null;
   const zabbixToken = state?.zabbixToken ?? null;
+  const ssoSessionToken = state?.ssoSessionToken ?? null;
   const role = state?.role;
   const roles: Role[] = role ? [role] : [];
   const session = user ? { user } : null;
   const isAdmin = role === "admin";
 
   return (
-    <AuthContext.Provider value={{ user, session, zabbixUser, zabbixToken, roles, loading, signIn, signOut, isAdmin }}>
+    <AuthContext.Provider
+      value={{
+        user, session, zabbixUser, zabbixToken, ssoSessionToken,
+        roles, loading, signIn, signInFromSso, signOut, isAdmin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -13,6 +13,8 @@ import Documentation from "./pages/Documentation";
 import DocumentView from "./pages/DocumentView";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
+import AuthSso from "./pages/AuthSso";
+import SsoDiagnostics from "./pages/SsoDiagnostics";
 import Quizzes from "./pages/Quizzes";
 import QuizTake from "./pages/QuizTake";
 import Skills from "./pages/Skills";
@@ -31,6 +33,8 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/sso" element={<AuthSso />} />
+              <Route path="/admin/sso" element={<AppLayout><SsoDiagnostics /></AppLayout>} />
               <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
               <Route path="/ask" element={<AppLayout><Dashboard /></AppLayout>} />
               <Route path="/docs" element={<AppLayout><Documentation /></AppLayout>} />

@@ -7,25 +7,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function HubSwitcher() {
-  const { zabbixToken } = useAuth();
+  const { ssoSessionToken } = useAuth();
   const [busy, setBusy] = useState(false);
 
   const go = async () => {
-    if (!zabbixToken) {
-      toast.error("Please sign in first.");
+    if (!ssoSessionToken) {
+      toast.error("Please sign in via Hub to enable SSO handoff.");
       return;
     }
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("sso-issue", {
-        body: { zabbix_token: zabbixToken },
+        body: { session_token: ssoSessionToken },
       });
       if (error || !data?.redirect_url) {
         toast.error("Could not start handoff to Poulina AI Hub.");
         setBusy(false);
         return;
       }
-      // Smooth transition: fade out then redirect
       document.body.style.transition = "opacity 200ms ease";
       document.body.style.opacity = "0";
       setTimeout(() => {
