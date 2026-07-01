@@ -1,8 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { jsonResponse, ssoCors, SSO_VERSION } from "../_shared/sso.ts";
+import { jsonResponse, ssoCorsHeaders, SSO_VERSION } from "../_shared/sso.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCorsHeaders(req) });
   const signing_secret_present = !!Deno.env.get("SSO_SHARED_SECRET");
   let nonce_store: "ok" | "error" = "ok";
   let last_inbound: string | null = null;
@@ -36,9 +36,10 @@ Deno.serve(async (req) => {
     fn: "sso-health",
     version: SSO_VERSION,
     signing_secret_present,
+    shared_secret_present: signing_secret_present,
     nonce_store,
     last_successful_inbound_at: last_inbound,
     last_successful_outbound_at: last_outbound,
     hub_sso_url: Deno.env.get("HUB_SSO_URL") ?? "https://poulinaaihub.younesblg.com/auth/sso",
-  });
+  }, 200, req);
 });

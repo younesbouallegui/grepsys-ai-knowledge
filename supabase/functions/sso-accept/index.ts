@@ -8,7 +8,6 @@ import {
   ISSUER_KNOWLEDGE,
   jsonResponse,
   signJwt,
-  ssoCors,
   SSO_VERSION,
   verifyJwt,
   ssoCorsHeaders,

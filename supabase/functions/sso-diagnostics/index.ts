@@ -4,22 +4,23 @@ import {
   AUDIENCE_KNOWLEDGE,
   ISSUER_HUB,
   jsonResponse,
-  ssoCors,
+  ssoCorsHeaders,
   SSO_VERSION,
   verifyJwt,
 } from "../_shared/sso.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCorsHeaders(req) });
   const url = new URL(req.url);
   if (req.method === "GET" && url.pathname.endsWith("/health")) {
-    return jsonResponse({ ok: true, fn: "sso-diagnostics", version: SSO_VERSION });
+    return jsonResponse({ ok: true, fn: "sso-diagnostics", version: SSO_VERSION }, 200, req);
   }
   try {
-    const { token, expected_issuer, expected_audience } = await req.json();
-    if (!token) return jsonResponse({ error: "Missing token" }, 400);
+    const { code, token, expected_issuer, expected_audience } = await req.json();
+    const ssoCode = code ?? token;
+    if (!ssoCode) return jsonResponse({ error: "Missing SSO code" }, 400, req);
 
-    const v = await verifyJwt(token, {
+    const v = await verifyJwt(ssoCode, {
       expectedIssuer: expected_issuer ?? ISSUER_HUB,
       expectedAudience: expected_audience ?? AUDIENCE_KNOWLEDGE,
       maxAgeSec: 120,
@@ -44,8 +45,8 @@ Deno.serve(async (req) => {
       nonce_used,
       claims: v.claims,
       error: v.error ?? null,
-    });
+    }, 200, req);
   } catch (e) {
-    return jsonResponse({ error: String((e as Error).message ?? e) }, 500);
+    return jsonResponse({ error: String((e as Error).message ?? e) }, 500, req);
   }
 });

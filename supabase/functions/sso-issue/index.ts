@@ -8,7 +8,7 @@ import {
   jsonResponse,
   newNonce,
   signJwt,
-  ssoCors,
+  ssoCorsHeaders,
   SSO_VERSION,
   verifyJwt,
 } from "../_shared/sso.ts";
@@ -16,22 +16,22 @@ import {
 const HUB_SSO_URL = Deno.env.get("HUB_SSO_URL") ?? "https://poulinaaihub.younesblg.com/auth/sso";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCorsHeaders(req) });
   const url = new URL(req.url);
   if (req.method === "GET" && url.pathname.endsWith("/health")) {
-    return jsonResponse({ ok: true, fn: "sso-issue", version: SSO_VERSION, hub_sso_url: HUB_SSO_URL });
+    return jsonResponse({ ok: true, fn: "sso-issue", version: SSO_VERSION, hub_sso_url: HUB_SSO_URL }, 200, req);
   }
 
   try {
     const { session_token } = await req.json();
-    if (!session_token) return jsonResponse({ error: "Missing session_token" }, 400);
+    if (!session_token) return jsonResponse({ error: "Missing session_token" }, 400, req);
 
     const v = await verifyJwt(session_token, {
       expectedIssuer: ISSUER_KNOWLEDGE,
       expectedAudience: AUDIENCE_KNOWLEDGE_APP,
     });
     if (!v.signature_valid || v.expired || !v.issuer_ok || !v.audience_ok || !v.claims) {
-      return jsonResponse({ error: "Invalid session" }, 401);
+      return jsonResponse({ error: "Invalid session" }, 401, req);
     }
     const c = v.claims as any;
 
@@ -63,9 +63,9 @@ Deno.serve(async (req) => {
     return jsonResponse({
       redirect_url: `${HUB_SSO_URL}?code=${encodeURIComponent(token)}`,
       version: SSO_VERSION,
-    });
+    }, 200, req);
   } catch (e) {
     console.error(e);
-    return jsonResponse({ error: String((e as Error).message ?? e) }, 500);
+    return jsonResponse({ error: String((e as Error).message ?? e) }, 500, req);
   }
 });
