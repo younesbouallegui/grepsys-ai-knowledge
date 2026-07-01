@@ -24,7 +24,19 @@ export default function AuthSso() {
           body: { code: token },
         });
         if (error || !data?.session_token) {
-          setError(data?.error ?? error?.message ?? "SSO exchange failed");
+          let reason = data?.error ?? "SSO exchange failed";
+          const context = (error as any)?.context;
+          if (!data?.error && context?.json) {
+            try {
+              const body = await context.json();
+              reason = body?.error ?? reason;
+            } catch {
+              reason = error?.message ?? reason;
+            }
+          } else if (!data?.error && error?.message) {
+            reason = error.message;
+          }
+          setError(reason);
           return;
         }
         signInFromSso(data);
