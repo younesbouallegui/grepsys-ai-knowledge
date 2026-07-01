@@ -51,8 +51,8 @@ async function hmacKey(secret: string): Promise<CryptoKey> {
 }
 
 function getSecret(): string {
-  const s = Deno.env.get("SSO_SIGNING_SECRET");
-  if (!s) throw new Error("SSO_SIGNING_SECRET is not configured");
+  const s = Deno.env.get("SSO_SHARED_SECRET");
+  if (!s) throw new Error("SSO_SHARED_SECRET is not configured");
   return s;
 }
 
@@ -125,16 +125,21 @@ export function newNonce(): string {
   return Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 
-export const ssoCors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
+export function ssoCorsHeaders(req?: Request): Record<string, string> {
+  const origin = req?.headers.get("origin") ?? "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
-export function jsonResponse(body: unknown, status = 200): Response {
+export const ssoCors = ssoCorsHeaders();
+
+export function jsonResponse(body: unknown, status = 200, req?: Request): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...ssoCors, "Content-Type": "application/json" },
+    headers: { ...ssoCorsHeaders(req), "Content-Type": "application/json" },
   });
 }

@@ -3,7 +3,7 @@ import { jsonResponse, ssoCors, SSO_VERSION } from "../_shared/sso.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCors });
-  const signing_secret_present = !!Deno.env.get("SSO_SIGNING_SECRET");
+  const signing_secret_present = !!Deno.env.get("SSO_SHARED_SECRET");
   let nonce_store: "ok" | "error" = "ok";
   let last_inbound: string | null = null;
   let last_outbound: string | null = null;

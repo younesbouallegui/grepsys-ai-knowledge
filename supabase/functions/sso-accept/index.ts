@@ -11,6 +11,7 @@ import {
   ssoCors,
   SSO_VERSION,
   verifyJwt,
+  ssoCorsHeaders,
 } from "../_shared/sso.ts";
 import { mapZabbixRole, zabbixUserIdToUuid } from "../_shared/zabbix.ts";
 
@@ -22,19 +23,20 @@ function admin() {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCorsHeaders(req) });
   const url = new URL(req.url);
   if (req.method === "GET" && url.pathname.endsWith("/health")) {
-    return jsonResponse({ ok: true, fn: "sso-accept", version: SSO_VERSION });
+    return jsonResponse({ ok: true, fn: "sso-accept", version: SSO_VERSION }, 200, req);
   }
 
   try {
-    const { token } = await req.json();
-    if (!token || typeof token !== "string") {
-      return jsonResponse({ error: "Missing token" }, 400);
+    const { code, token } = await req.json();
+    const ssoCode = code ?? token;
+    if (!ssoCode || typeof ssoCode !== "string") {
+      return jsonResponse({ error: "Missing SSO code" }, 400, req);
     }
 
-    const v = await verifyJwt(token, {
+    const v = await verifyJwt(ssoCode, {
       expectedIssuer: ISSUER_HUB,
       expectedAudience: AUDIENCE_KNOWLEDGE,
       maxAgeSec: 120,
@@ -47,7 +49,7 @@ Deno.serve(async (req) => {
           sig: v.signature_valid, exp: v.expired, iss: v.issuer_ok, aud: v.audience_ok,
         }),
       });
-      return jsonResponse({ error: "Invalid SSO token", detail: v }, 401);
+      return jsonResponse({ error: "Invalid SSO code", detail: v }, 401, req);
     }
 
     const c = v.claims;
@@ -68,7 +70,7 @@ Deno.serve(async (req) => {
         succeeded: false,
         error: `nonce_replay: ${nonceErr.message}`,
       });
-      return jsonResponse({ error: "Nonce already used" }, 409);
+      return jsonResponse({ error: "SSO code already used" }, 409, req);
     }
 
     // Upsert local profile (local mirror only; not an auth source).
@@ -125,9 +127,9 @@ Deno.serve(async (req) => {
       platform_user_id: platformUserId,
       role,
       display_name: c.display_name || c.username,
-    });
+    }, 200, req);
   } catch (e) {
     console.error(e);
-    return jsonResponse({ error: String((e as Error).message ?? e) }, 500);
+    return jsonResponse({ error: String((e as Error).message ?? e) }, 500, req);
   }
 });
