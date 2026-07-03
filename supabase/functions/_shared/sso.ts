@@ -1,15 +1,15 @@
 // Shared HS256 JWT helpers for the Knowledge ↔ Hub SSO bridge.
 // No external dependency: implements compact JWT manually.
 
-export const ISSUER_HUB = "poulina-hub";
-export const ISSUER_KNOWLEDGE = "poulina-knowledge";
-export const AUDIENCE_HUB = "poulina-hub";
-export const AUDIENCE_KNOWLEDGE = "poulina-knowledge";
+export const ISSUER_HUB = "hub";
+export const ISSUER_KNOWLEDGE = "knowledge";
+export const AUDIENCE_HUB = "hub";
+export const AUDIENCE_KNOWLEDGE = "knowledge";
 
 // App-session audience used to mark Knowledge's local login token.
-export const AUDIENCE_KNOWLEDGE_APP = "poulina-knowledge-app";
+export const AUDIENCE_KNOWLEDGE_APP = "knowledge-app";
 
-export const SSO_VERSION = Deno.env.get("SSO_BUILD_ID") ?? "2026-06-24.1";
+export const SSO_VERSION = Deno.env.get("SSO_BUILD_ID") ?? "2026-07-03.2";
 
 export interface SsoClaims {
   iss: string;
@@ -66,33 +66,93 @@ export async function signJwt(payload: Record<string, unknown>, secret = getSecr
 }
 
 export interface VerifyResult {
+  alg_ok: boolean;
   signature_valid: boolean;
   expired: boolean;
+  iat_ok: boolean;
   issuer_ok: boolean;
   audience_ok: boolean;
+  nonce_present: boolean;
+  expected_issuer: string;
+  expected_audience: string;
+  actual_issuer: string | null;
+  actual_audience: string | null;
+  token_length: number;
+  token_segments: number;
+  segment_lengths: number[];
+  token_sha256_prefix: string;
+  failure_reasons: string[];
   claims: SsoClaims | null;
   error?: string;
 }
 
+export async function sha256Prefix(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf))
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 16);
+}
+
 export async function verifyJwt(
   token: string,
-  opts: { expectedIssuer: string; expectedAudience: string; maxAgeSec?: number },
+  opts: { expectedIssuer: string; expectedAudience: string; maxAgeSec?: number; requireNonce?: boolean },
   secret = getSecret(),
 ): Promise<VerifyResult> {
+  const parts = token.split(".");
   const out: VerifyResult = {
+    alg_ok: false,
     signature_valid: false,
     expired: false,
+    iat_ok: false,
     issuer_ok: false,
     audience_ok: false,
+    nonce_present: false,
+    expected_issuer: opts.expectedIssuer,
+    expected_audience: opts.expectedAudience,
+    actual_issuer: null,
+    actual_audience: null,
+    token_length: token.length,
+    token_segments: parts.length,
+    segment_lengths: parts.map((p) => p.length),
+    token_sha256_prefix: await sha256Prefix(token),
+    failure_reasons: [],
     claims: null,
   };
   try {
-    const parts = token.split(".");
+    if (token.includes(" ")) out.failure_reasons.push("token contains spaces; possible '+' decoded as space");
     if (parts.length !== 3) {
       out.error = "malformed token";
+      out.failure_reasons.push("malformed JWT");
       return out;
     }
     const [h, p, s] = parts;
+    let header: Record<string, unknown>;
+    try {
+      header = JSON.parse(new TextDecoder().decode(b64urlDecode(h)));
+    } catch {
+      out.error = "malformed JWT header";
+      out.failure_reasons.push("malformed JWT header");
+      return out;
+    }
+    out.alg_ok = header.alg === "HS256";
+    if (!out.alg_ok) out.failure_reasons.push(`algorithm mismatch: expected HS256, got ${String(header.alg ?? "missing")}`);
+
+    let decodedClaims: SsoClaims | null = null;
+    try {
+      decodedClaims = JSON.parse(new TextDecoder().decode(b64urlDecode(p))) as SsoClaims;
+      out.claims = decodedClaims;
+      out.actual_issuer = decodedClaims.iss ?? null;
+      out.actual_audience = decodedClaims.aud ?? null;
+      out.issuer_ok = decodedClaims.iss === opts.expectedIssuer;
+      out.audience_ok = decodedClaims.aud === opts.expectedAudience;
+      out.nonce_present = typeof decodedClaims.nonce === "string" && decodedClaims.nonce.length > 0;
+    } catch {
+      out.error = "malformed JWT payload";
+      out.failure_reasons.push("malformed JWT payload");
+      return out;
+    }
+
     const key = await hmacKey(secret);
     const ok = await crypto.subtle.verify(
       "HMAC",
@@ -103,18 +163,26 @@ export async function verifyJwt(
     out.signature_valid = ok;
     if (!ok) {
       out.error = "bad signature";
+      out.failure_reasons.push("signature mismatch");
       return out;
     }
-    const claims = JSON.parse(new TextDecoder().decode(b64urlDecode(p))) as SsoClaims;
-    out.claims = claims;
+    const claims = decodedClaims;
     const now = Math.floor(Date.now() / 1000);
-    out.expired = !claims.exp || claims.exp < now;
-    if (opts.maxAgeSec && claims.iat && now - claims.iat > opts.maxAgeSec) out.expired = true;
-    out.issuer_ok = claims.iss === opts.expectedIssuer;
-    out.audience_ok = claims.aud === opts.expectedAudience;
+    out.expired = typeof claims.exp !== "number" || claims.exp < now;
+    if (out.expired) out.failure_reasons.push("expired token");
+    out.iat_ok = typeof claims.iat === "number" && claims.iat <= now + 60;
+    if (!out.iat_ok) out.failure_reasons.push(typeof claims.iat === "number" ? "iat is in the future" : "missing iat");
+    if (opts.maxAgeSec && claims.iat && now - claims.iat > opts.maxAgeSec) {
+      out.expired = true;
+      out.failure_reasons.push("iat too old for SSO exchange window");
+    }
+    if (!out.issuer_ok) out.failure_reasons.push(`issuer mismatch: expected ${opts.expectedIssuer}, got ${String(claims.iss ?? "missing")}`);
+    if (!out.audience_ok) out.failure_reasons.push(`audience mismatch: expected ${opts.expectedAudience}, got ${String(claims.aud ?? "missing")}`);
+    if (opts.requireNonce && !out.nonce_present) out.failure_reasons.push("missing nonce");
     return out;
   } catch (e) {
     out.error = String((e as Error).message ?? e);
+    out.failure_reasons.push(out.error);
     return out;
   }
 }

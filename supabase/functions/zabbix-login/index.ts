@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { AUDIENCE_KNOWLEDGE_APP, ISSUER_KNOWLEDGE, signJwt } from "../_shared/sso.ts";
 import { zabbixRpc, mapZabbixRole, zabbixUserIdToUuid } from "../_shared/zabbix.ts";
 
 Deno.serve(async (req) => {
@@ -80,9 +81,24 @@ Deno.serve(async (req) => {
       { onConflict: "user_id,role" },
     );
 
+    const now = Math.floor(Date.now() / 1000);
+    const sessionToken = await signJwt({
+      iss: ISSUER_KNOWLEDGE,
+      aud: AUDIENCE_KNOWLEDGE_APP,
+      sub: String(zu.userid),
+      username: zu.username,
+      display_name: displayName,
+      email,
+      roles: [role],
+      platform_user_id: platformUserId,
+      iat: now,
+      exp: now + 60 * 60 * 24,
+    });
+
     return new Response(
       JSON.stringify({
         zabbix_token: zabbixToken,
+        session_token: sessionToken,
         platform_user_id: platformUserId,
         role,
         user: {

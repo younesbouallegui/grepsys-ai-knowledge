@@ -128,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: platformUser,
         zabbixUser: data.user,
         zabbixToken: data.zabbix_token,
+        ssoSessionToken: data.session_token ?? null,
         authSource: "zabbix",
         role: data.role,
       };

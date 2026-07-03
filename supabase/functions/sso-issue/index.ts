@@ -30,8 +30,21 @@ Deno.serve(async (req) => {
       expectedIssuer: ISSUER_KNOWLEDGE,
       expectedAudience: AUDIENCE_KNOWLEDGE_APP,
     });
-    if (!v.signature_valid || v.expired || !v.issuer_ok || !v.audience_ok || !v.claims) {
-      return jsonResponse({ error: "Invalid session" }, 401, req);
+    if (!v.alg_ok || !v.signature_valid || v.expired || !v.iat_ok || !v.issuer_ok || !v.audience_ok || !v.claims) {
+      const primary = v.failure_reasons[0] ?? v.error ?? "Invalid session";
+      console.error("sso-issue session validation failed", JSON.stringify({
+        primary,
+        failure_reasons: v.failure_reasons,
+        expected_issuer: v.expected_issuer,
+        actual_issuer: v.actual_issuer,
+        expected_audience: v.expected_audience,
+        actual_audience: v.actual_audience,
+        token_length: v.token_length,
+        token_segments: v.token_segments,
+        segment_lengths: v.segment_lengths,
+        token_sha256_prefix: v.token_sha256_prefix,
+      }));
+      return jsonResponse({ error: primary, code: "session_validation_failed", validation: v }, 401, req);
     }
     const c = v.claims as any;
 

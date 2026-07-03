@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
       expectedIssuer: expected_issuer ?? ISSUER_HUB,
       expectedAudience: expected_audience ?? AUDIENCE_KNOWLEDGE,
       maxAgeSec: 120,
+      requireNonce: true,
     });
 
     let nonce_used = false;
@@ -42,6 +43,18 @@ Deno.serve(async (req) => {
       expired: v.expired,
       issuer_ok: v.issuer_ok,
       audience_ok: v.audience_ok,
+      iat_ok: v.iat_ok,
+      alg_ok: v.alg_ok,
+      nonce_present: v.nonce_present,
+      expected_issuer: v.expected_issuer,
+      actual_issuer: v.actual_issuer,
+      expected_audience: v.expected_audience,
+      actual_audience: v.actual_audience,
+      token_length: v.token_length,
+      token_segments: v.token_segments,
+      segment_lengths: v.segment_lengths,
+      token_sha256_prefix: v.token_sha256_prefix,
+      failure_reasons: v.failure_reasons,
       nonce_used,
       claims: v.claims,
       error: v.error ?? null,
