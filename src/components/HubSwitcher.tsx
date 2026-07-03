@@ -6,6 +6,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+async function readFunctionError(error: any, fallback: string) {
+  const context = error?.context;
+  if (context?.json) {
+    try {
+      const body = await context.json();
+      if (Array.isArray(body?.validation?.failure_reasons) && body.validation.failure_reasons.length) {
+        return body.validation.failure_reasons.join("; ");
+      }
+      return body?.error ?? fallback;
+    } catch {
+      return error?.message ?? fallback;
+    }
+  }
+  return error?.message ?? fallback;
+}
+
 export function HubSwitcher() {
   const { ssoSessionToken } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -21,7 +37,7 @@ export function HubSwitcher() {
         body: { session_token: ssoSessionToken },
       });
       if (error || !data?.redirect_url) {
-        toast.error("Could not start handoff to Poulina AI Hub.");
+        toast.error(data?.error ?? await readFunctionError(error, "Could not start handoff to Poulina AI Hub."));
         setBusy(false);
         return;
       }

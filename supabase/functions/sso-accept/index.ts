@@ -39,16 +39,28 @@ Deno.serve(async (req) => {
       expectedIssuer: ISSUER_HUB,
       expectedAudience: AUDIENCE_KNOWLEDGE,
       maxAgeSec: 120,
+      requireNonce: true,
     });
     if (!v.signature_valid || v.expired || !v.issuer_ok || !v.audience_ok || !v.claims) {
+      const primary = v.failure_reasons[0] ?? v.error ?? "SSO validation failed";
+      console.error("sso-accept validation failed", JSON.stringify({
+        primary,
+        failure_reasons: v.failure_reasons,
+        expected_issuer: v.expected_issuer,
+        actual_issuer: v.actual_issuer,
+        expected_audience: v.expected_audience,
+        actual_audience: v.actual_audience,
+        token_length: v.token_length,
+        token_segments: v.token_segments,
+        segment_lengths: v.segment_lengths,
+        token_sha256_prefix: v.token_sha256_prefix,
+      }));
       await admin().from("sso_exchange_log").insert({
         direction: "inbound",
         succeeded: false,
-        error: v.error ?? JSON.stringify({
-          sig: v.signature_valid, exp: v.expired, iss: v.issuer_ok, aud: v.audience_ok,
-        }),
+        error: JSON.stringify({ primary, failure_reasons: v.failure_reasons, detail: v }),
       });
-      return jsonResponse({ error: "Invalid SSO code", detail: v }, 401, req);
+      return jsonResponse({ error: primary, code: "sso_validation_failed", validation: v }, 401, req);
     }
 
     const c = v.claims;
@@ -69,7 +81,8 @@ Deno.serve(async (req) => {
         succeeded: false,
         error: `nonce_replay: ${nonceErr.message}`,
       });
-      return jsonResponse({ error: "SSO code already used" }, 409, req);
+      console.error("sso-accept nonce already used", JSON.stringify({ nonce: c.nonce, issuer: c.iss, audience: c.aud }));
+      return jsonResponse({ error: "nonce already used", code: "nonce_replay" }, 409, req);
     }
 
     // Upsert local profile (local mirror only; not an auth source).
