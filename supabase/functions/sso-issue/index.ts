@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
       expectedIssuer: ISSUER_KNOWLEDGE,
       expectedAudience: AUDIENCE_KNOWLEDGE_APP,
     });
-    if (!v.signature_valid || v.expired || !v.issuer_ok || !v.audience_ok || !v.claims) {
+    if (!v.alg_ok || !v.signature_valid || v.expired || !v.iat_ok || !v.issuer_ok || !v.audience_ok || !v.claims) {
       const primary = v.failure_reasons[0] ?? v.error ?? "Invalid session";
       console.error("sso-issue session validation failed", JSON.stringify({
         primary,

@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       maxAgeSec: 120,
       requireNonce: true,
     });
-    if (!v.signature_valid || v.expired || !v.issuer_ok || !v.audience_ok || !v.claims) {
+    if (!v.alg_ok || !v.signature_valid || v.expired || !v.iat_ok || !v.issuer_ok || !v.audience_ok || !v.nonce_present || !v.claims) {
       const primary = v.failure_reasons[0] ?? v.error ?? "SSO validation failed";
       console.error("sso-accept validation failed", JSON.stringify({
         primary,
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
       },
       { onConflict: "id" },
     );
-    const role = c.roles?.[0] ?? mapZabbixRole(undefined);
+    const role = (c.roles?.[0] as "admin" | "editor" | "viewer" | undefined) ?? mapZabbixRole(undefined);
     await sb.from("user_roles").upsert(
       { user_id: platformUserId, role },
       { onConflict: "user_id,role" },
