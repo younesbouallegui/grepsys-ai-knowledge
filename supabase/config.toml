@@ -1,0 +1,28 @@
+project_id = "yweknqfqvjkxepivuufc"
+
+[functions.ask-ai]
+verify_jwt = false
+
+[functions.ask-stream]
+verify_jwt = false
+
+[functions.seed-docs]
+verify_jwt = false
+
+[functions.seed-demo-user]
+verify_jwt = false
+
+[functions.assessment-submit]
+verify_jwt = false
+
+[functions.sso-accept]
+verify_jwt = false
+
+[functions.sso-issue]
+verify_jwt = false
+
+[functions.sso-health]
+verify_jwt = false
+
+[functions.sso-diagnostics]
+verify_jwt = false
