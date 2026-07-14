@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/poulina-logo.png";
+import logo from "@/assets/grepsys-logo.png";
 
 export function AppSidebar() {
   const { t } = useTranslation();

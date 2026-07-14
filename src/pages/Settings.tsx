@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
-const PREFS_KEY = "poulina:user-prefs";
+const PREFS_KEY = "grepsys:user-prefs";
 
 interface Prefs {
   notifyEmail: boolean;
