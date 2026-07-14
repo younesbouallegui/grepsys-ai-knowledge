@@ -134,7 +134,7 @@ export function AppSidebar() {
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium truncate">{name}</div>
               <div className="text-[11px] text-muted-foreground truncate">
-                {isAdmin ? "Admin" : user?.email}
+                {roleLabel || user?.email}
               </div>
             </div>
             <Button
