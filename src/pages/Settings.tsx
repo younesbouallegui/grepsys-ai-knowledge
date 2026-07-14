@@ -54,8 +54,8 @@ const defaultPrefs: Prefs = {
   density: "comfortable",
   analyticsOptOut: false,
   shareUsage: true,
-  orgName: "Poulina Group Holding",
-  orgDomain: "poulinagroup.com",
+  orgName: "Grepsys",
+  orgDomain: "grepsys.com",
   defaultCategory: "monitoring",
 };
 
@@ -162,7 +162,7 @@ export default function Settings() {
       <div>
         <h1 className="text-3xl font-display font-semibold tracking-tight">{t("nav.settings")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage your profile, preferences, security, and Poulina workspace settings.
+          Manage your profile, preferences, security, and Grepsys workspace settings.
         </p>
       </div>
 
@@ -286,7 +286,7 @@ export default function Settings() {
         <SectionHeader
           icon={ShieldCheck}
           title="Security"
-          description="Protect your Poulina account."
+          description="Protect your Grepsys account."
         />
         <Row label="Two-factor authentication" hint="Require a second factor at sign-in.">
           <Switch
@@ -367,7 +367,7 @@ export default function Settings() {
         <SectionHeader
           icon={Building2}
           title="Workspace & branding"
-          description="Organization identity displayed across Poulina AI."
+          description="Organization identity displayed across Grepsys AI."
         />
         <div className="space-y-2">
           <Label>Organization name</Label>
@@ -390,7 +390,7 @@ export default function Settings() {
         <SectionHeader
           icon={Plug}
           title="Integrations"
-          description="Connect Poulina AI with your enterprise tools."
+          description="Connect Grepsys AI with your enterprise tools."
         />
         <Row label="Microsoft 365" hint="Sync calendar and identity.">
           <Badge variant="outline">Available</Badge>
@@ -412,7 +412,7 @@ export default function Settings() {
           title="Privacy"
           description="Control what data is collected and shared."
         />
-        <Row label="Share anonymous usage" hint="Helps us improve Poulina AI.">
+        <Row label="Share anonymous usage" hint="Helps us improve Grepsys AI.">
           <Switch
             checked={prefs.shareUsage}
             onCheckedChange={(v) => updatePref("shareUsage", v)}
@@ -438,7 +438,7 @@ export default function Settings() {
         <SectionHeader
           icon={LifeBuoy}
           title="Help & support"
-          description="Get assistance from the Poulina AI team."
+          description="Get assistance from the Grepsys AI team."
         />
         <Row label="Documentation" hint="Browse platform guides and references.">
           <Button asChild variant="outline" size="sm">
@@ -446,11 +446,11 @@ export default function Settings() {
           </Button>
         </Row>
         <Separator />
-        <Row label="Contact support" hint="Reach the Poulina AI support team.">
+        <Row label="Contact support" hint="Reach the Grepsys AI support team.">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => (window.location.href = "mailto:support@poulinagroup.com")}
+            onClick={() => (window.location.href = "mailto:support@grepsys.com")}
           >
             Email us
           </Button>

@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Poulina AI Knowledge Platform — Enterprise Design System */
+/* Grepsys AI Knowledge Platform — Enterprise Design System */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 28% 12%;
 
-    /* Poulina deep corporate blue #204e8f */
+    /* Grepsys deep corporate blue #204e8f */
     --primary: 213 64% 34%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 213 70% 48%;

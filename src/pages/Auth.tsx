@@ -36,7 +36,7 @@ export default function Auth() {
     <div className="min-h-screen flex flex-col bg-background hero-glow">
       <header className="flex items-center justify-between p-6">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="Poulina" className="h-8 w-8 rounded" />
+          <img src={logo} alt="Grepsys" className="h-8 w-8 rounded" />
           <span className="font-display font-semibold tracking-tight">{t("common.appName")}</span>
         </div>
         <div className="flex items-center gap-1">

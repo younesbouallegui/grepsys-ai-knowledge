@@ -84,7 +84,7 @@ export default function Documentation() {
         <Card className="p-10 text-center">
           <Sparkles className="h-6 w-6 mx-auto text-primary mb-3" />
           <h3 className="font-display font-semibold mb-1">No documentation indexed yet</h3>
-          <p className="text-sm text-muted-foreground mb-4">Seed the platform with sample Poulina documentation to get started.</p>
+          <p className="text-sm text-muted-foreground mb-4">Seed the platform with sample Grepsys documentation to get started.</p>
           <Button onClick={seed} disabled={seeding}>
             {seeding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
             Seed sample documentation

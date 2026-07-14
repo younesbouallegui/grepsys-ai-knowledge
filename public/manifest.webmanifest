@@ -1,6 +1,6 @@
 {
-  "name": "Poulina AI Knowledge Hub",
-  "short_name": "Poulina AI",
+  "name": "Grepsys AI Knowledge",
+  "short_name": "Grepsys AI",
   "description": "Enterprise platform for intelligent documentation, structured learning, and skill validation.",
   "start_url": "/",
   "display": "standalone",

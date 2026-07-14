@@ -4,7 +4,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 
 const en = {
   common: {
-    appName: "Poulina AI Knowledge",
+    appName: "Grepsys AI Knowledge",
     appTagline: "Enterprise intelligence platform",
     signIn: "Sign in",
     signOut: "Sign out",
@@ -160,7 +160,7 @@ const en = {
 
 const fr: typeof en = {
   common: {
-    appName: "Poulina AI Knowledge",
+    appName: "Grepsys AI Knowledge",
     appTagline: "Plateforme d'intelligence d'entreprise",
     signIn: "Se connecter",
     signOut: "Se déconnecter",

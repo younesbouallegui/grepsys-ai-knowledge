@@ -67,12 +67,12 @@ export function AppSidebar() {
         <div className={`flex items-center overflow-hidden ${collapsed ? "justify-center" : "gap-2.5"}`}>
           <img
             src={logo}
-            alt="Poulina"
+            alt="Grepsys"
             className={`rounded shrink-0 ${collapsed ? "h-10 w-10" : "h-8 w-8"}`}
           />
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-sm font-semibold tracking-tight font-display truncate">Poulina AI</div>
+              <div className="text-sm font-semibold tracking-tight font-display truncate">Grepsys AI</div>
               <div className="text-[11px] text-muted-foreground truncate">Knowledge Platform</div>
             </div>
           )}

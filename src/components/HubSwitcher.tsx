@@ -37,7 +37,7 @@ export function HubSwitcher() {
         body: { session_token: ssoSessionToken },
       });
       if (error || !data?.redirect_url) {
-        toast.error(data?.error ?? await readFunctionError(error, "Could not start handoff to Poulina AI Hub."));
+        toast.error(data?.error ?? await readFunctionError(error, "Could not start handoff to Grepsys AI Hub."));
         setBusy(false);
         return;
       }
@@ -47,7 +47,7 @@ export function HubSwitcher() {
         window.location.href = data.redirect_url;
       }, 180);
     } catch {
-      toast.error("Could not start handoff to Poulina AI Hub.");
+      toast.error("Could not start handoff to Grepsys AI Hub.");
       setBusy(false);
     }
   };
@@ -64,7 +64,7 @@ export function HubSwitcher() {
             className="gap-2 font-medium"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">Poulina AI Hub</span>
+            <span className="hidden sm:inline">Grepsys AI Hub</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom">Switch to AI Hub — stay logged in</TooltipContent>
