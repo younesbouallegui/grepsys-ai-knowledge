@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
           `[File: ${a.name}]\n${a.data.slice(0, 20000)}`).join("\n\n")
       : "";
 
-    const sysPrompt = `You are the Poulina AI Knowledge assistant — a read-only documentation assistant for the Poulina Group enterprise platform.
+    const sysPrompt = `You are the Grepsys AI Knowledge assistant — a read-only documentation assistant for the Grepsys enterprise platform.
 You explain, guide, and teach. You NEVER execute actions or commands.
 Use the provided documentation context and any attached files/images to answer.
 If the answer is not present, say so honestly. Format in clean markdown.`;
