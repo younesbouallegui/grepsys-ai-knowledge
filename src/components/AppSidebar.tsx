@@ -23,10 +23,10 @@ import logo from "@/assets/grepsys-logo.png";
 export function AppSidebar() {
   const { t } = useTranslation();
   const { state } = useSidebar();
-  const { isAdmin, user, signOut } = useAuth();
+  const { isAdmin, user, zabbixUser, roles, signOut } = useAuth();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const [displayName, setDisplayName] = useState<string>("");
+  const [profileName, setProfileName] = useState<string>("");
 
   useEffect(() => {
     if (!user) return;
@@ -36,7 +36,7 @@ export function AppSidebar() {
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.display_name) setDisplayName(data.display_name);
+        if (data?.display_name) setProfileName(data.display_name);
       });
   }, [user]);
 
@@ -52,14 +52,31 @@ export function AppSidebar() {
   const isActive = (url: string) =>
     url === "/" ? location.pathname === "/" || location.pathname === "/ask" : location.pathname.startsWith(url);
 
-  const name = displayName || user?.email?.split("@")[0] || "User";
-  const initials = name
-    .split(/\s+/)
-    .map((s) => s[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const zabbixFullName = zabbixUser
+    ? [zabbixUser.name, zabbixUser.surname].filter(Boolean).join(" ").trim()
+    : "";
+  const metaName = user?.user_metadata?.display_name?.trim() || "";
+  const name =
+    zabbixFullName ||
+    metaName ||
+    profileName ||
+    zabbixUser?.username ||
+    user?.email?.split("@")[0] ||
+    "User";
+
+  const initialsSource = zabbixFullName || metaName || profileName || zabbixUser?.username || name;
+  const initials =
+    initialsSource
+      .split(/\s+/)
+      .map((s) => s[0])
+      .filter((c) => /[a-zA-Z]/.test(c ?? ""))
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() ||
+    (zabbixUser?.username?.[0]?.toUpperCase() ?? "U");
+
+  const role = roles[0];
+  const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
 
   return (
     <Sidebar collapsible="icon">
@@ -117,7 +134,7 @@ export function AppSidebar() {
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium truncate">{name}</div>
               <div className="text-[11px] text-muted-foreground truncate">
-                {isAdmin ? "Admin" : user?.email}
+                {roleLabel || user?.email}
               </div>
             </div>
             <Button
