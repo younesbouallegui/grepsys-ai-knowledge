@@ -22,13 +22,38 @@ async function readFunctionError(error: any, fallback: string) {
   return error?.message ?? fallback;
 }
 
+function isTokenExpired(token: string | null): boolean {
+  if (!token) return true;
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return true;
+    const b64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const claims = JSON.parse(atob(padded));
+    if (typeof claims?.exp !== "number") return false;
+    // treat as expired 5s early to avoid boundary races
+    return claims.exp <= Math.floor(Date.now() / 1000) + 5;
+  } catch {
+    return true;
+  }
+}
+
 export function HubSwitcher() {
-  const { ssoSessionToken } = useAuth();
+  const { ssoSessionToken, signOut } = useAuth();
   const [busy, setBusy] = useState(false);
+
+  const requireResignIn = async () => {
+    toast.error("Your session has expired. Please sign in again to continue to Grepsys AI Hub.");
+    await signOut();
+  };
 
   const go = async () => {
     if (!ssoSessionToken) {
       toast.error("Please sign in via Hub to enable SSO handoff.");
+      return;
+    }
+    if (isTokenExpired(ssoSessionToken)) {
+      await requireResignIn();
       return;
     }
     setBusy(true);
@@ -37,8 +62,13 @@ export function HubSwitcher() {
         body: { session_token: ssoSessionToken },
       });
       if (error || !data?.redirect_url) {
-        toast.error(data?.error ?? await readFunctionError(error, "Could not start handoff to Grepsys AI Hub."));
+        const message = data?.error ?? await readFunctionError(error, "Could not start handoff to Grepsys AI Hub.");
         setBusy(false);
+        if (/expired/i.test(message)) {
+          await requireResignIn();
+        } else {
+          toast.error(message);
+        }
         return;
       }
       document.body.style.transition = "opacity 200ms ease";
