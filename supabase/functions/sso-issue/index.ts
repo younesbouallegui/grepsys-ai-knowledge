@@ -13,7 +13,7 @@ import {
   verifyJwt,
 } from "../_shared/sso.ts";
 
-const HUB_SSO_URL = Deno.env.get("HUB_SSO_URL") ?? "https://poulinaaihub.younesblg.com/auth/sso";
+const HUB_SSO_URL = Deno.env.get("HUB_SSO_URL") ?? "https://grepsysaihub.younesblg.com/auth/sso";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: ssoCorsHeaders(req) });

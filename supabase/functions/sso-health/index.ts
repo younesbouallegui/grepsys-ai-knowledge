@@ -55,6 +55,6 @@ Deno.serve(async (req) => {
     nonce_store,
     last_successful_inbound_at: last_inbound,
     last_successful_outbound_at: last_outbound,
-    hub_sso_url: Deno.env.get("HUB_SSO_URL") ?? "https://poulinaaihub.younesblg.com/auth/sso",
+    hub_sso_url: Deno.env.get("HUB_SSO_URL") ?? "https://grepsysaihub.younesblg.com/auth/sso",
   }, 200, req);
 });
